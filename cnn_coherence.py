@@ -1,14 +1,14 @@
 from __future__ import division
 
-from keras.layers import AveragePooling1D, Flatten, Input, Embedding, LSTM, Dense, merge, Convolution1D, MaxPooling1D, Dropout
+from keras.layers import AveragePooling1D, Flatten, Input, Embedding, LSTM, Dense, merge, Convolution1D, MaxPooling1D, Dropout, Activation
 from keras.models import Model
 from keras import objectives
 from keras.preprocessing import sequence
 from keras.callbacks import ModelCheckpoint
 from keras.utils import np_utils
 from keras import backend as K
-
-
+from sklearn.metrics import confusion_matrix, accuracy_score
+import keras
 import numpy as np
 from utilities import my_callbacks
 from utilities import data_helper
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         ,dropout_ratio  = 0.5
 
         ,maxlen         = 2000
-        ,epochs         = 30
+        ,epochs         = 15
         ,emb_size       = 100
         ,hidden_size    = 250
         ,nb_filter      = 150
@@ -97,13 +97,22 @@ if __name__ == '__main__':
     X_test_1, X_test_0, E    = data_helper.load_and_numberize_Egrid_with_Feats("data/wsj.test", 
             perm_num = 20, maxlen=opts.maxlen, window_size=opts.w_size, vocab_list=vocab, emb_size=opts.emb_size, fn=fn)
 
+    p_train = np.unique(X_train_1, axis=0)
+    p_dev = np.unique(X_dev_1, axis=0)
+    p_test = np.unique(X_test_1, axis=0)
+    X_train_1 = np.append(p_train, X_train_0, axis=0)
+    X_dev_1 = np.append( p_dev, X_dev_0, axis=0)
+    X_test_1 = np.append(p_test, X_test_0, axis=0)
+
+
     num_train = len(X_train_1)
     num_dev   = len(X_dev_1)
     num_test  = len(X_test_1)
     #assign Y value
-    y_train_1 = [1] * num_train 
-    y_dev_1 = [1] * num_dev 
-    y_test_1 = [1] * num_test 
+    y_train_1 = [1] * len(p_train) + [0] * len(X_train_0) 
+    y_dev_1 = [1] * len(p_dev) + [0] * len(X_dev_0) 
+    y_test_1 = [1] * len(p_test) + [0] * len(X_test_0) 
+
 
     print('.....................................')
     print("Num of traing pairs: " + str(num_train))
@@ -114,15 +123,15 @@ if __name__ == '__main__':
     print('.....................................')
 
     # the output is always 1??????
-    y_train_1 = np_utils.to_categorical(y_train_1, 2)
-    y_dev_1 = np_utils.to_categorical(y_dev_1, 2)
-    y_test_1 = np_utils.to_categorical(y_test_1, 2)
+    # y_train_1 = np_utils.to_categorical(y_train_1, 2)
+    # y_dev_1 = np_utils.to_categorical(y_dev_1, 2)
+    # y_test_1 = np_utils.to_categorical(y_test_1, 2)
 
     #randomly shuffle the training data
-    np.random.seed(113)
-    np.random.shuffle(X_train_1)
-    np.random.seed(113)
-    np.random.shuffle(X_train_0)
+    # np.random.seed(113)
+    # np.random.shuffle(X_train_1)
+    # np.random.seed(113)
+    # np.random.shuffle(X_train_0)
 
 
     # first, define a CNN model for sequence of entities 
@@ -145,24 +154,24 @@ if __name__ == '__main__':
     x = Dropout(opts.dropout_ratio)(x)
 
     # add latent coherence score
-    out_x = Dense(1, activation='linear')(x)
+    out_x = Dense(1, activation='sigmoid')(x)
     shared_cnn = Model(sent_input, out_x)
 
     # Inputs of pos and neg document
-    pos_input = Input(shape=(opts.maxlen,), dtype='int32', name="pos_input")
-    neg_input = Input(shape=(opts.maxlen,), dtype='int32', name="neg_input")
+    # pos_input = Input(shape=(opts.maxlen,), dtype='int32', name="pos_input")
+    # neg_input = Input(shape=(opts.maxlen,), dtype='int32', name="neg_input")
 
-    # these two models will share eveything from shared_cnn
-    pos_branch = shared_cnn(pos_input)
-    neg_branch = shared_cnn(neg_input)
+    # # these two models will share eveything from shared_cnn
+    # pos_branch = shared_cnn(pos_input)
+    # neg_branch = shared_cnn(neg_input)
 
-    concatenated = merge([pos_branch, neg_branch], mode='concat',name="coherence_out")
-    # output is two latent coherence score
+    # concatenated = merge([pos_branch, neg_branch], mode='concat',name="coherence_out")
+    # # output is two latent coherence score
 
-    final_model = Model([pos_input, neg_input], concatenated)
+    # final_model = Model([pos_input, neg_input], concatenated)
 
     #final_model.compile(loss='ranking_loss', optimizer='adam')
-    final_model.compile(loss={'coherence_out': ranking_loss}, optimizer=opts.learn_alg)
+    shared_cnn.compile(loss=keras.losses.binary_crossentropy, optimizer=opts.learn_alg)
 
     # setting callback
     histories = my_callbacks.Histories()
@@ -170,7 +179,7 @@ if __name__ == '__main__':
     print(shared_cnn.summary())
     #print(final_model.summary())
 
-    print("------------------------------------------------")	
+    print("------------------------------------------------")   
     
     #writing model name
     if opts.f_list != "":
@@ -189,10 +198,10 @@ if __name__ == '__main__':
     patience = 0 
     for ep in range(1,opts.epochs):
         
-        final_model.fit([X_train_1, X_train_0], y_train_1, validation_data=([X_dev_1, X_dev_0], y_dev_1), nb_epoch=1,
- 					verbose=1, batch_size=opts.minibatch_size, callbacks=[histories])
+        shared_cnn.fit(X_train_1, y_train_1, validation_data=(X_dev_1, y_dev_1), nb_epoch=1,
+                    verbose=1, batch_size=opts.minibatch_size, callbacks=[histories])
 
-        final_model.save(model_name + "_ep." + str(ep) + ".h5")
+        shared_cnn.save(model_name + "_ep." + str(ep) + ".h5")
 
         curAcc =  histories.accs[0]
         if curAcc >= bestAcc:
@@ -203,41 +212,31 @@ if __name__ == '__main__':
             patience = patience + 1
 
         #doing classify the test set
-        y_pred = final_model.predict([X_test_1, X_test_0])        
-        ties = 0
-        wins = 0
-        n = len(y_pred)
-        for i in range(0,n):
-            if y_pred[i][0] > y_pred[i][1]:
-                wins = wins + 1
-            elif y_pred[i][0] == y_pred[i][1]:
-                ties = ties + 1
-        print("Perform on test set after Epoch: " + str(ep) + "...!")    
-        print(" -Wins: " + str(wins) + " Ties: "  + str(ties))
-        loss = n - (wins+ties)
-        #recall = wins/n;
-        prec = wins/(wins + loss)
-        #f1 = 2*prec*recall/(prec+recall)
+        y_pred = shared_cnn.predict(X_test_1)
+        #np.savetxt("pred", y_pred)
+        #np.savetxt("true", y_test_1)
+        for j in np.arange(0.13, 0.14, 0.0001):
+            y_pred = [1 if i >= j else 0 for i in y_pred ]
+            print("Confusion Matrix", confusion_matrix(y_test_1, y_pred))    
+            n = len(y_pred)
+            print("Perform on test set after Epoch: " + str(ep) + "...!")    
+            # print(" -Wins: " + str(wins) + " Ties: "  + str(ties))
+            # loss = n - (wins+ties)
+            #recall = wins/n;
+            # prec = wins/(wins + loss)
+            #f1= 2*prec*recall/(prec+recall)
 
-        print(" -Test acc: " + str(wins/n))
-        #print(" -Test f1 : " + str(f1))
 
-        #stop the model whch patience = 8
-        if patience > 5:
-            print("Early stopping at epoch: "+ str(ep))
-            break
+            print(" -Test acc: " + str(accuracy_score(y_test_1, y_pred)))
+            #print(" -Test f1 : " + str(f1))
+
+            #stop the model whch patience = 8
+            if patience > 5:
+                print("Early stopping at epoch: "+ str(ep))
+                break
 
     print("Model reachs the best performance on Dev set: " + str(bestAcc))
     print("Finish training and testing...")
     #print(histories.losses)
     #print(histories.accs)
-
-
-
-
-
-
-
-
-
 
