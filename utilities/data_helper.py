@@ -231,37 +231,21 @@ def load_and_numberize_Egrid_with_Feats(filelist="list_of_grid.txt", perm_num = 
         #print(file) 
 
         lines = [line.rstrip('\n') for line in open(file + ".EGrid")]
-        f_lines = [line.rstrip('\n') for line in open(file + ".Feats")]
+        #f_lines = [line.rstrip('\n') for line in open(file + ".Feats")]
 
         grid_1 = "0 "* window_size
 
         for idx, line in enumerate(lines):
-            e_trans = get_eTrans_with_Feats(sent=line,feats=f_lines[idx],fn=fn) # merge the grid of positive document 
+            e_trans = get_eTrans_with_Feats(sent=line,feats="",fn=fn) # merge the grid of positive document 
             if len(e_trans) !=0:
                 grid_1 = grid_1 + e_trans + " " + "0 "* window_size
         #print(grid_1)
                 
         p_count = 0
-        for i in range(1,perm_num+1): # reading the permuted docs
-            permuted_lines = [p_line.rstrip('\n') for p_line in open(file+ ".EGrid" +"-"+str(i))]    
-            grid_0 = "0 "* window_size
-
-            for idx, p_line in enumerate(permuted_lines):
-                e_trans_0 = get_eTrans_with_Feats(sent=p_line, feats=f_lines[idx],fn=fn)
-                if len(e_trans_0) !=0:
-                    grid_0 = grid_0 + e_trans_0  + " " + "0 "* window_size
-
-            if grid_0 != grid_1: #check the duplication
-                p_count = p_count + 1
-                sentences_0.append(grid_0)
-            #else:
-            #    print(file+ ".EGrid" +"-"+str(i)) // print duplicates permuted docs with original
-        
         for i in range (0, p_count): #stupid code
             sentences_1.append(grid_1)
 
 
-    assert len(sentences_0) == len(sentences_1)
 
     vocab_idmap = {}
     for i in range(len(vocab_list)):
@@ -269,19 +253,18 @@ def load_and_numberize_Egrid_with_Feats(filelist="list_of_grid.txt", perm_num = 
 
     # Numberize the sentences
     X_1 = numberize_sentences(sentences_1, vocab_idmap)
-    X_0  = numberize_sentences(sentences_0,  vocab_idmap)
+    
     
     X_1 = adjust_index(X_1, maxlen=maxlen, window_size=window_size)
-    X_0  = adjust_index(X_0,  maxlen=maxlen, window_size=window_size)
-
+    
     X_1 = sequence.pad_sequences(X_1, maxlen)
-    X_0 = sequence.pad_sequences(X_0, maxlen)
+    
 
     if E is None:
         E      = 0.01 * np.random.uniform( -1.0, 1.0, (len(vocab_list), emb_size))
         E[len(vocab_list)-1] = 0
 
-    return X_1, X_0, E 
+    return X_1, _, E 
 
 #===================================================
 #loading data for summary experiment task 
