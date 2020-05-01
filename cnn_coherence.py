@@ -61,7 +61,7 @@ if __name__ == '__main__':
         ,dropout_ratio  = 0.5
 
         ,maxlen         = 2000
-        ,epochs         = 15
+        ,epochs         = 30
         ,emb_size       = 100
         ,hidden_size    = 250
         ,nb_filter      = 150
@@ -98,11 +98,11 @@ if __name__ == '__main__':
             perm_num = 20, maxlen=opts.maxlen, window_size=opts.w_size, vocab_list=vocab, emb_size=opts.emb_size, fn=fn)
 
     p_train = np.unique(X_train_1, axis=0)
-    p_dev = np.unique(X_dev_1, axis=0)
-    p_test = np.unique(X_test_1, axis=0)
+    #p_dev = np.unique(X_dev_1, axis=0)
+    #p_test = np.unique(X_test_1, axis=0)
     X_train_1 = np.append(p_train, X_train_0, axis=0)
-    X_dev_1 = np.append( p_dev, X_dev_0, axis=0)
-    X_test_1 = np.append(p_test, X_test_0, axis=0)
+    #X_dev_1 = np.append( p_dev, X_dev_0, axis=0)
+    #X_test_1 = np.append(p_test, X_test_0, axis=0)
 
 
     num_train = len(X_train_1)
@@ -110,8 +110,8 @@ if __name__ == '__main__':
     num_test  = len(X_test_1)
     #assign Y value
     y_train_1 = [1] * len(p_train) + [0] * len(X_train_0) 
-    y_dev_1 = [1] * len(p_dev) + [0] * len(X_dev_0) 
-    y_test_1 = [1] * len(p_test) + [0] * len(X_test_0) 
+    y_dev_1 = [1] * len(X_dev_0) 
+    y_test_1 = [1] * len(X_test_0) 
 
 
     print('.....................................')
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     patience = 0 
     for ep in range(1,opts.epochs):
         
-        shared_cnn.fit(X_train_1, y_train_1, validation_data=(X_dev_1, y_dev_1), nb_epoch=1,
+        shared_cnn.fit(X_train_1, y_train_1, validation_data=([X_dev_1, X_dev_0], y_dev_1), nb_epoch=1,
                     verbose=1, batch_size=opts.minibatch_size, callbacks=[histories])
 
         shared_cnn.save(model_name + "_ep." + str(ep) + ".h5")
@@ -211,29 +211,29 @@ if __name__ == '__main__':
         else:
             patience = patience + 1
 
-        #doing classify the test set
-        y_pred = shared_cnn.predict(X_test_1)
-        #np.savetxt("pred", y_pred)
-        #np.savetxt("true", y_test_1)
-        for j in np.arange(0.13, 0.14, 0.0001):
-            y_pred = [1 if i >= j else 0 for i in y_pred ]
-            print("Confusion Matrix", confusion_matrix(y_test_1, y_pred))    
-            n = len(y_pred)
-            print("Perform on test set after Epoch: " + str(ep) + "...!")    
-            # print(" -Wins: " + str(wins) + " Ties: "  + str(ties))
-            # loss = n - (wins+ties)
-            #recall = wins/n;
-            # prec = wins/(wins + loss)
-            #f1= 2*prec*recall/(prec+recall)
+        pos_pred = final_model.predict(X_test_1).reshape(-1)
+        neg_pred = final_model.predict(X_test_0).reshape(-1)        
+        ties = 0
+        wins = 0
+        n = len(pos_pred)
+        for i,j in zip(pos_pred, neg_pred):
+            if i > j:
+                wins = wins + 1
+            elif i==j:
+                ties = ties + 1
+        print("Perform on test set after Epoch: " + str(ep) + "...!")    
+        print(" -Wins: " + str(wins) + " Ties: "  + str(ties))
+        loss = n - (wins+ties)
+        #recall = wins/n;
+        prec = wins/(wins + loss)
+        #f1 = 2*prec*recall/(prec+recall)
 
-
-            print(" -Test acc: " + str(accuracy_score(y_test_1, y_pred)))
-            #print(" -Test f1 : " + str(f1))
-
-            #stop the model whch patience = 8
-            if patience > 5:
-                print("Early stopping at epoch: "+ str(ep))
-                break
+        print(" -Test acc: " + str(wins/n))
+        #print(" -Test f1 : " + str(f1))       
+    
+        if patience > 5:
+            print("Early stopping at epoch: "+ str(ep))
+            break
 
     print("Model reachs the best performance on Dev set: " + str(bestAcc))
     print("Finish training and testing...")
