@@ -61,7 +61,7 @@ if __name__ == '__main__':
         ,dropout_ratio  = 0.5
 
         ,maxlen         = 2000
-        ,epochs         = 30
+        ,epochs         = 20
         ,emb_size       = 100
         ,hidden_size    = 250
         ,nb_filter      = 150
@@ -198,21 +198,11 @@ if __name__ == '__main__':
     patience = 0 
     for ep in range(1,opts.epochs):
         
-        shared_cnn.fit(X_train_1, y_train_1, validation_data=([X_dev_1, X_dev_0], y_dev_1), nb_epoch=1,
-                    verbose=1, batch_size=opts.minibatch_size, callbacks=[histories])
+        shared_cnn.fit(X_train_1, y_train_1, nb_epoch=1,verbose=1, batch_size=opts.minibatch_size)
 
         shared_cnn.save(model_name + "_ep." + str(ep) + ".h5")
-
-        curAcc =  histories.accs[0]
-        if curAcc >= bestAcc:
-            bestAcc = curAcc
-            patience = 0
-    
-        else:
-            patience = patience + 1
-
-        pos_pred = final_model.predict(X_test_1).reshape(-1)
-        neg_pred = final_model.predict(X_test_0).reshape(-1)        
+        pos_pred = shared_cnn.predict(X_test_1).reshape(-1)
+        neg_pred = shared_cnn.predict(X_test_0).reshape(-1)        
         ties = 0
         wins = 0
         n = len(pos_pred)
