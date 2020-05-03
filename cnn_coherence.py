@@ -84,23 +84,23 @@ if __name__ == '__main__':
 
     #fn = range(0,10) #using feature
     fn = None
-    vocab = data_helper.load_all(filelist="data/wsj.train_dev",fn=fn)
+    vocab = data_helper.load_all(filelist="data/clinton.train",fn=fn)
     print (vocab)
 
     print("loading entity-gird for pos and neg documents...")
-    X_train_1, X_train_0, E = data_helper.load_and_numberize_Egrid_with_Feats("data/wsj.train", 
+    X_train_1, X_train_0, E = data_helper.load_and_numberize_Egrid_with_Feats("data/clinton.train", 
             perm_num = opts.p_num, maxlen=opts.maxlen, window_size=opts.w_size, vocab_list=vocab, emb_size=opts.emb_size, fn=fn)
 
     X_dev_1, X_dev_0, E    = data_helper.load_and_numberize_Egrid_with_Feats("data/wsj.dev", 
             perm_num = opts.p_num, maxlen=opts.maxlen, window_size=opts.w_size, vocab_list=vocab, emb_size=opts.emb_size, fn=fn)
 
-    X_test_1, X_test_0, E    = data_helper.load_and_numberize_Egrid_with_Feats("data/wsj.test", 
+    X_test_1, X_test_0, E    = data_helper.load_and_numberize_Egrid_with_Feats("data/clinton.test", 
             perm_num = 20, maxlen=opts.maxlen, window_size=opts.w_size, vocab_list=vocab, emb_size=opts.emb_size, fn=fn)
 
-    p_train = np.unique(X_train_1, axis=0)
+    #p_train = np.unique(X_train_1, axis=0)
     #p_dev = np.unique(X_dev_1, axis=0)
     #p_test = np.unique(X_test_1, axis=0)
-    X_train_1 = np.append(p_train, X_train_0, axis=0)
+    #X_train_1 = np.append(p_train, X_train_0, axis=0)
     #X_dev_1 = np.append( p_dev, X_dev_0, axis=0)
     #X_test_1 = np.append(p_test, X_test_0, axis=0)
 
@@ -109,9 +109,12 @@ if __name__ == '__main__':
     num_dev   = len(X_dev_1)
     num_test  = len(X_test_1)
     #assign Y value
-    y_train_1 = [1] * len(p_train) + [0] * len(X_train_0) 
+
+    y_train_1 = np_utils.to_categorical(map(lambda x:x-1, map(int, open("data/clinton_new_egrid/labels.txt", "r").read().split('\n'))))
+    #y_train_1 = [1] * len(p_train) + [0] * len(X_train_0) 
     y_dev_1 = [1] * len(X_dev_0) 
-    y_test_1 = [1] * len(X_test_0) 
+    y_test_1 = np_utils.to_categorical(map (lambda x:x-1, map(int, open("data/clinton_test_new_egrid/labels.txt", "r").read().split('\n'))))
+
 
 
     print('.....................................')
@@ -154,7 +157,7 @@ if __name__ == '__main__':
     x = Dropout(opts.dropout_ratio)(x)
 
     # add latent coherence score
-    out_x = Dense(1, activation='sigmoid')(x)
+    out_x = Dense(3, activation='softmax')(x)
     shared_cnn = Model(sent_input, out_x)
 
     # Inputs of pos and neg document
@@ -171,7 +174,7 @@ if __name__ == '__main__':
     # final_model = Model([pos_input, neg_input], concatenated)
 
     #final_model.compile(loss='ranking_loss', optimizer='adam')
-    shared_cnn.compile(loss=keras.losses.binary_crossentropy, optimizer=opts.learn_alg)
+    shared_cnn.compile(loss=keras.losses.categorical_crossentropy, optimizer=opts.learn_alg)
 
     # setting callback
     histories = my_callbacks.Histories()
@@ -202,8 +205,9 @@ if __name__ == '__main__':
 
         shared_cnn.save(model_name + "_ep." + str(ep) + ".h5")
         pos_pred = shared_cnn.predict(X_test_1).reshape(-1)
-        neg_pred = shared_cnn.predict(X_test_0).reshape(-1)        
-        ties = 0
+        #neg_pred = shared_cnn.predict(X_test_0).reshape(-1)        
+        #ties = 0
+        '''
         wins = 0
         n = len(pos_pred)
         for i,j in zip(pos_pred, neg_pred):
@@ -220,7 +224,7 @@ if __name__ == '__main__':
 
         print(" -Test acc: " + str(wins/n))
         #print(" -Test f1 : " + str(f1))       
-    
+        '''
         if patience > 5:
             print("Early stopping at epoch: "+ str(ep))
             break

@@ -230,7 +230,7 @@ def load_and_numberize_Egrid_with_Feats(filelist="list_of_grid.txt", perm_num = 
     for file in list_of_files:
         #print(file) 
 
-        lines = [line.rstrip('\n') for line in open(file + ".EGrid")]
+        lines = [line.rstrip('\n') for line in open(file+".EGrid")]
         #f_lines = [line.rstrip('\n') for line in open(file + ".Feats")]
 
         grid_1 = "0 "* window_size
@@ -264,7 +264,7 @@ def load_and_numberize_Egrid_with_Feats(filelist="list_of_grid.txt", perm_num = 
         E      = 0.01 * np.random.uniform( -1.0, 1.0, (len(vocab_list), emb_size))
         E[len(vocab_list)-1] = 0
 
-    return X_1, _, E 
+    return X_1, "", E 
 
 #===================================================
 #loading data for summary experiment task 
