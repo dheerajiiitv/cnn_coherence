@@ -110,10 +110,10 @@ if __name__ == '__main__':
     num_test  = len(X_test_1)
     #assign Y value
 
-    y_train_1 = np_utils.to_categorical(map(lambda x:x-1, map(int, open("data/clinton_new_egrid/labels.txt", "r").read().split('\n'))))
+    y_train_1 = np_utils.to_categorical(list(map(lambda x:x-1, list(map(int, open("data/clinton_new_egrid/labels.txt", "r").read().split('\n'))))))
     #y_train_1 = [1] * len(p_train) + [0] * len(X_train_0) 
     y_dev_1 = [1] * len(X_dev_0) 
-    y_test_1 = np_utils.to_categorical(map (lambda x:x-1, map(int, open("data/clinton_test_new_egrid/labels.txt", "r").read().split('\n'))))
+    y_test_1 = np_utils.to_categorical(list(map (lambda x:x-1, list(map(int, open("data/clinton_test_new_egrid/labels.txt", "r").read().split('\n'))))))
 
 
 
@@ -199,12 +199,16 @@ if __name__ == '__main__':
     print("Training model...")
     bestAcc = 0.0
     patience = 0 
+    model_json = shared_cnn.to_json()
+    with open("model_classification.json", "w") as json_file:
+       json_file.write(model_json)
+    exit()
     for ep in range(1,opts.epochs):
         
         shared_cnn.fit(X_train_1, y_train_1, nb_epoch=1,verbose=1, batch_size=opts.minibatch_size)
 
         shared_cnn.save(model_name + "_ep." + str(ep) + ".h5")
-        pos_pred = shared_cnn.predict(X_test_1).reshape(-1)
+        #pos_pred = shared_cnn.predict(X_test_1).reshape(-1)
         #neg_pred = shared_cnn.predict(X_test_0).reshape(-1)        
         #ties = 0
         '''

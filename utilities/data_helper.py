@@ -197,11 +197,11 @@ def load_all(filelist="list_of_grid.txt",fn=None):
     for file in list_of_files:
 #        print(file)
         lines = [line.rstrip('\n') for line in open(file + ".EGrid")]
-        f_lines = [line.rstrip('\n') for line in open(file + ".Feats")]
+        #f_lines = [line.rstrip('\n') for line in open(file + ".Feats")]
 
         for idx, line in enumerate(lines):
             # merge the grid of positive document 
-            e_trans = get_eTrans_with_Feats(sent=line,feats=f_lines[idx],fn=fn)
+            e_trans = get_eTrans_with_Feats(sent=line,feats=None,fn=fn)
             # need to update the dictionary here
             if len(e_trans) !=0:
                 for wrd in e_trans.split():
@@ -241,9 +241,9 @@ def load_and_numberize_Egrid_with_Feats(filelist="list_of_grid.txt", perm_num = 
                 grid_1 = grid_1 + e_trans + " " + "0 "* window_size
         #print(grid_1)
                 
-        p_count = 0
-        for i in range (0, p_count): #stupid code
-            sentences_1.append(grid_1)
+        #p_count = 0
+        #for i in range (0, p_count): #stupid code
+        sentences_1.append(grid_1)
 
 
 
